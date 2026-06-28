@@ -14,14 +14,19 @@ SECRET_KEY = os.environ.get('LICENSE_SECRET', '5aa34376218593058b89fd8e8cfa695e2
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'benimtoken123')
 
 # --- Database abstraction ---
-USE_PG = bool(os.environ.get("DATABASE_URL", ""))
+_USE_PG_URL = os.environ.get("DATABASE_URL", "")
+USE_PG = bool(_USE_PG_URL)
 
 if USE_PG:
-    import psycopg2
-    import psycopg2.extras
+    try:
+        import psycopg2
+        import psycopg2.extras
+    except ImportError:
+        USE_PG = False
 
+if USE_PG:
     def get_db():
-        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        conn = psycopg2.connect(_USE_PG_URL)
         conn.autocommit = True
         return conn
 

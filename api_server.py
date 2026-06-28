@@ -12,7 +12,7 @@ from flask import Flask, request, jsonify, render_template, abort, redirect, url
 app = Flask(__name__)
 
 SECRET_KEY = os.environ.get('LICENSE_SECRET', '5aa34376218593058b89fd8e8cfa695e26f25980a999e98cd76c9e86cd81db8e')
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'admin123')
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'benimtoken123')
 
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DB_DIR, 'licenses.db')
@@ -135,44 +135,16 @@ def health():
     return jsonify({"status": "ok", "time": datetime.now().isoformat()})
 
 
-@app.route("/api/debug", methods=["GET", "POST"])
-def debug():
-    import sys
-    headers = dict(request.headers)
-    args = dict(request.args)
-    data_raw = request.get_data(as_text=True)
-    data_json = request.get_json(silent=True)
-    return jsonify({
-        "method": request.method,
-        "content_type": request.content_type,
-        "args": args,
-        "headers": {k: v for k, v in headers.items() if k.lower() not in ("authorization", "cookie")},
-        "data_raw": data_raw[:200],
-        "data_json": data_json,
-        "admin_token": ADMIN_TOKEN,
-    })
-
 @app.route("/api/register", methods=["POST"])
 def register():
-    data_raw = request.get_data(as_text=True)
-    try:
-        data = json.loads(data_raw)
-    except:
-        data = {}
-
-    token = data.get("token", "") or request.args.get("token", "") or request.headers.get("Authorization", "").replace("Bearer ", "")
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if token != ADMIN_TOKEN:
-        return jsonify({"error": "Yetkisiz erişim", "debug": f"got token='{token[:20]}' expected='{ADMIN_TOKEN[:20]}'"}), 401
+        return jsonify({"error": "Yetkisiz erişim"}), 401
 
+    data = request.get_json(silent=True) or {}
     email = data.get("email", "").strip().lower()
     plan = data.get("plan", "").strip()
     hesap = data.get("hesap", "").strip()
-
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        return jsonify({"success": False, "error": "Geçersiz email"}), 400
-
-    if plan not in PLAN_DAYS and plan not in PLAN_LIFETIME:
-        return jsonify({"success": False, "error": "Geçersiz plan"}), 400
 
     key, expiry_ymd = generate_key(email, plan)
     key_hash = hashlib.sha256(key.encode()).hexdigest()

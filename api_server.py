@@ -30,6 +30,7 @@ if _PG_URL:
         USE_PG = False
 
 if USE_PG:
+    _pg_cursor_factory = psycopg2.extras.RealDictCursor
 
     def get_db():
         conn = psycopg2.connect(_PG_URL)
@@ -105,7 +106,10 @@ else:
 
 def db_execute(sql, params=None, fetch=True):
     conn = get_db()
-    cur = conn.cursor()
+    if USE_PG:
+        cur = conn.cursor(cursor_factory=_pg_cursor_factory)
+    else:
+        cur = conn.cursor()
     try:
         if USE_PG:
             cur.execute(_q(sql), params or ())

@@ -135,12 +135,34 @@ def health():
     return jsonify({"status": "ok", "time": datetime.now().isoformat()})
 
 
+@app.route("/api/debug", methods=["GET", "POST"])
+def debug():
+    import sys
+    headers = dict(request.headers)
+    args = dict(request.args)
+    data_raw = request.get_data(as_text=True)
+    data_json = request.get_json(silent=True)
+    return jsonify({
+        "method": request.method,
+        "content_type": request.content_type,
+        "args": args,
+        "headers": {k: v for k, v in headers.items() if k.lower() not in ("authorization", "cookie")},
+        "data_raw": data_raw[:200],
+        "data_json": data_json,
+        "admin_token": ADMIN_TOKEN,
+    })
+
 @app.route("/api/register", methods=["POST"])
 def register():
-    data = request.get_json(silent=True) or {}
+    data_raw = request.get_data(as_text=True)
+    try:
+        data = json.loads(data_raw)
+    except:
+        data = {}
+
     token = data.get("token", "") or request.args.get("token", "") or request.headers.get("Authorization", "").replace("Bearer ", "")
     if token != ADMIN_TOKEN:
-        return jsonify({"error": "Yetkisiz erişim"}), 401
+        return jsonify({"error": "Yetkisiz erişim", "debug": f"got token='{token[:20]}' expected='{ADMIN_TOKEN[:20]}'"}), 401
 
     email = data.get("email", "").strip().lower()
     plan = data.get("plan", "").strip()

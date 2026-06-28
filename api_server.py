@@ -3,7 +3,6 @@ import json
 import hmac
 import hashlib
 import base64
-import sqlite3
 import re
 from datetime import datetime, timedelta
 from functools import wraps
@@ -14,40 +13,110 @@ app = Flask(__name__)
 SECRET_KEY = os.environ.get('LICENSE_SECRET', '5aa34376218593058b89fd8e8cfa695e26f25980a999e98cd76c9e86cd81db8e')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'benimtoken123')
 
-DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'licenses.db')
+# --- Database abstraction ---
+USE_PG = bool(os.environ.get("DATABASE_URL", ""))
+
+if USE_PG:
+    import psycopg2
+    import psycopg2.extras
+
+    def get_db():
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
+        conn.autocommit = True
+        return conn
+
+    def _q(sql):
+        return sql.replace("?", "%s")
+
+    def _last_id(cur, conn):
+        cur.execute("SELECT LASTVAL()")
+        return cur.fetchone()[0]
+
+    def _row_factory(cur):
+        return [dict(r) for r in cur.fetchall()]
+
+    def init_db():
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute(_q('''
+                CREATE TABLE IF NOT EXISTS licenses (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    plan TEXT NOT NULL,
+                    hesap TEXT DEFAULT '',
+                    key_hash TEXT NOT NULL UNIQUE,
+                    expiry TEXT NOT NULL,
+                    activated_at TEXT,
+                    last_check_at TEXT,
+                    activation_ip TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            '''))
+            cur.execute(_q('CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);'))
+        conn.close()
+
+else:
+    import sqlite3
+
+    DB_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(DB_DIR, "licenses.db")
+
+    def get_db():
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _q(sql):
+        return sql
+
+    def _last_id(cur, conn):
+        return cur.lastrowid
+
+    def _row_factory(cur):
+        return [dict(r) for r in cur.fetchall()]
+
+    def init_db():
+        conn = get_db()
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS licenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                plan TEXT NOT NULL,
+                hesap TEXT DEFAULT '',
+                key_hash TEXT NOT NULL UNIQUE,
+                expiry TEXT NOT NULL,
+                activated_at TEXT,
+                last_check_at TEXT,
+                activation_ip TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+        ''')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);')
+        conn.commit()
+        conn.close()
+
+
+def db_execute(sql, params=None, fetch=True):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        if USE_PG:
+            cur.execute(_q(sql), params or ())
+        else:
+            cur.execute(sql, params or ())
+            conn.commit()
+        if fetch:
+            return _row_factory(cur)
+        return _last_id(cur, conn)
+    finally:
+        conn.close()
+
 
 PLAN_DAYS = {"1month": 30, "3month": 90, "6month": 180, "12month": 365}
 PLAN_LIFETIME = ("suresiz", "0suresiz")
-
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    conn = get_db()
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS licenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            plan TEXT NOT NULL,
-            hesap TEXT DEFAULT '',
-            key_hash TEXT NOT NULL UNIQUE,
-            expiry TEXT NOT NULL,
-            activated_at TEXT,
-            last_check_at TEXT,
-            activation_ip TEXT,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-    ''')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);')
-    conn.commit()
-    conn.close()
 
 
 def generate_key(email: str, plan: str) -> tuple:
@@ -136,17 +205,14 @@ def register():
     key, expiry_ymd = generate_key(email, plan)
     key_hash = hashlib.sha256(key.encode()).hexdigest()
 
-    conn = get_db()
     try:
-        conn.execute(
+        db_execute(
             "INSERT INTO licenses (email, plan, hesap, key_hash, expiry) VALUES (?, ?, ?, ?, ?)",
-            (email, plan, hesap, key_hash, "")
+            (email, plan, hesap, key_hash, ""),
+            fetch=False
         )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
+    except Exception:
         return jsonify({"success": False, "error": "Bu email için zaten bir anahtar var"}), 409
-    conn.close()
 
     return jsonify({
         "success": True,
@@ -174,17 +240,13 @@ def verify():
     expiry = sig_result["expiry"]
 
     key_hash = hashlib.sha256(key.encode()).hexdigest()
-    conn = get_db()
-    row = conn.execute(
-        "SELECT * FROM licenses WHERE key_hash = ?", (key_hash,)
-    ).fetchone()
-
-    if not row:
-        conn.close()
+    rows = db_execute("SELECT * FROM licenses WHERE key_hash = ?", (key_hash,))
+    if not rows:
         return jsonify({
             "valid": False,
             "reason": "Bu anahtar sistemde kayıtlı değil. Satıcınızla iletişime geçin."
         })
+    row = rows[0]
 
     if plan in PLAN_LIFETIME:
         db_expiry = "20991231"
@@ -192,21 +254,19 @@ def verify():
         db_expiry = (datetime.now() + timedelta(days=PLAN_DAYS.get(plan, 30))).strftime("%Y%m%d")
 
     if row["activated_at"] is None:
-        conn.execute(
+        db_execute(
             "UPDATE licenses SET activated_at = ?, activation_ip = ?, expiry = ? WHERE id = ?",
-            (datetime.now().isoformat(), get_real_ip(), db_expiry, row["id"])
+            (datetime.now().isoformat(), get_real_ip(), db_expiry, row["id"]),
+            fetch=False
         )
-        conn.commit()
     else:
-        conn.execute(
+        db_execute(
             "UPDATE licenses SET activation_ip = ?, last_check_at = ? WHERE id = ?",
-            (get_real_ip(), datetime.now().isoformat(), row["id"])
+            (get_real_ip(), datetime.now().isoformat(), row["id"]),
+            fetch=False
         )
         if row["expiry"]:
             db_expiry = row["expiry"]
-        conn.commit()
-
-    conn.close()
 
     if plan in PLAN_LIFETIME or db_expiry == "20991231":
         remaining = -1
@@ -243,24 +303,19 @@ def check():
         return jsonify({"valid": False, "reason": "Eksik bilgi"}), 400
 
     key_hash = hashlib.sha256(key.encode()).hexdigest()
-    conn = get_db()
-    row = conn.execute(
-        "SELECT * FROM licenses WHERE key_hash = ?", (key_hash,)
-    ).fetchone()
-
-    if not row:
-        conn.close()
+    rows = db_execute("SELECT * FROM licenses WHERE key_hash = ?", (key_hash,))
+    if not rows:
         return jsonify({"valid": False, "reason": "Anahtar bulunamadı"})
+    row = rows[0]
 
     plan = row["plan"]
     expiry = row["expiry"]
 
-    conn.execute(
+    db_execute(
         "UPDATE licenses SET last_check_at = ?, activation_ip = ? WHERE id = ?",
-        (datetime.now().isoformat(), get_real_ip(), row["id"])
+        (datetime.now().isoformat(), get_real_ip(), row["id"]),
+        fetch=False
     )
-    conn.commit()
-    conn.close()
 
     if not expiry:
         return jsonify({
@@ -302,11 +357,7 @@ def dashboard():
                                authorized=False,
                                token=ADMIN_TOKEN)
 
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM licenses ORDER BY created_at DESC"
-    ).fetchall()
-    conn.close()
+    rows = db_execute("SELECT * FROM licenses ORDER BY created_at DESC")
 
     records = []
     for r in rows:

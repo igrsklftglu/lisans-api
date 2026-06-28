@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta http-equiv="refresh" content="5"><title>Lisans Kayitlari</title>
+<style>
+body { font-family: Arial; margin: 30px; }
+table { border-collapse: collapse; width: 100%; }
+th { background: #4A9EDA; color: white; padding: 10px; text-align: left; }
+td { padding: 8px; border-bottom: 1px solid #ddd; }
+tr:hover { background: #f0f0f0; }
+</style></head><body>
+<h2>Lisans Kayitlari</h2>
+<table id="tablo"></table>
+<p style="color:#999;font-size:12px;margin-top:20px;">Son guncelleme: <span id="tarih">-</span></p>
+<script>
+const VERI = [{"i": 1, "e": "i.grsklftglu@gmail.com", "h": "336551760", "p": "6 Ay", "o": "2026-06-28 14:11", "b": "2026-12-25T14:11:27.039728", "a": "2026-12-25T00:00:00", "ip": "16.170.140.115"}];
+function kalanHesapla(bitis) {
+    if (!bitis) return ['Aktif Edilmedi', -1];
+    if (bitis === '-' || bitis === 'Suresiz') return ['Suresiz', -1];
+    if (bitis.length < 8) return ['Aktif Edilmedi', -1];
+    const fark = new Date(bitis) - new Date();
+    if (fark <= 0) return ['<span style="color:red">Suresi Doldu</span>', 0];
+    const t = Math.floor(fark / 1000);
+    let g = Math.floor(t / 86400);
+    const s = Math.floor((t % 86400) / 3600);
+    const d = Math.floor((t % 3600) / 60);
+    const sn = t % 60;
+    let p = [];
+    if (g >= 30) { p.push(Math.floor(g/30)+' ay'); g = g % 30; }
+    if (g > 0) p.push(g+' gun');
+    if (s > 0) p.push(s+' saat');
+    p.push(d+' dk');
+    p.push(sn+' sn');
+    return [p.join(' '), fark];
+}
+let kalanHuccreleri = [];
+function render(d) {
+    let h = '<tr><th>#</th><th>Email</th><th>Hesap</th><th>Plan</th><th>Olusturulma</th><th>Bitis</th><th>Kalan</th><th>IP</th></tr>';
+    kalanHuccreleri = [];
+    d.forEach((r, idx) => {
+        const kalan_bitis = r.a && r.a !== '-' ? r.a : null;
+        const sonuc = kalanHesapla(kalan_bitis);
+        const kln = sonuc[0];
+        h += '<tr><td>'+r.i+'</td><td>'+r.e+'</td><td>'+r.h+'</td><td>'+r.p+'</td><td>'+r.o+'</td><td>'+(r.b||'-').substring(0,10)+'</td><td id="k'+idx+'">'+kln+'</td><td>'+r.ip+'</td></tr>';
+        if (kalan_bitis && kalan_bitis.length >= 8 && kalan_bitis !== 'Suresiz') {
+            const fark = new Date(kalan_bitis) - new Date();
+            if (fark > 0) kalanHuccreleri.push({ idx: idx, bitis: kalan_bitis });
+        }
+    });
+    document.getElementById('tablo').innerHTML = h;
+    document.getElementById('tarih').textContent = new Date().toLocaleString('tr-TR');
+}
+render(VERI);
+if (kalanHuccreleri.length > 0) {
+    setInterval(() => {
+        kalanHuccreleri.forEach(r => {
+            const h = document.getElementById('k'+r.idx);
+            if (h) h.textContent = kalanHesapla(r.bitis)[0];
+        });
+    }, 1000);
+}
+</script></body></html>

@@ -390,6 +390,11 @@ def dashboard():
         plan = r["plan"]
         expiry = r["expiry"]
 
+        def _str(val):
+            if val is None: return "-"
+            if isinstance(val, datetime): return val.isoformat()
+            return str(val)
+
         if plan in PLAN_LIFETIME or expiry == "20991231" or expiry == "00000000":
             status = "Süresiz"
             remaining = -1
@@ -420,10 +425,10 @@ def dashboard():
             "expiry": expiry_display,
             "remaining": remaining,
             "status": status,
-            "activated_at": r["activated_at"] or "-",
-            "last_check_at": r["last_check_at"] or "-",
-            "ip": r["activation_ip"] or "-",
-            "created_at": r["created_at"]
+            "activated_at": _str(r["activated_at"]),
+            "last_check_at": _str(r["last_check_at"]),
+            "ip": _str(r["activation_ip"]),
+            "created_at": _str(r["created_at"])
         })
 
     return render_template("dashboard.html",

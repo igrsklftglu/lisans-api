@@ -136,9 +136,12 @@ def health():
 
 
 @app.route("/api/register", methods=["POST"])
-@token_required
 def register():
     data = request.get_json(silent=True) or {}
+    token = data.get("token", "") or request.args.get("token", "") or request.headers.get("Authorization", "").replace("Bearer ", "")
+    if token != ADMIN_TOKEN:
+        return jsonify({"error": "Yetkisiz erişim"}), 401
+
     email = data.get("email", "").strip().lower()
     plan = data.get("plan", "").strip()
     hesap = data.get("hesap", "").strip()

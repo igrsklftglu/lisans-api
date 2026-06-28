@@ -21,14 +21,15 @@ if _PG_URL:
     try:
         import psycopg2
         import psycopg2.extras
-        _test = psycopg2.connect(_PG_URL)
+        _test = psycopg2.connect(_PG_URL, connect_timeout=5)
         _test.close()
         USE_PG = True
-    except Exception:
+        print("PostgreSQL baglantisi basarili!")
+    except Exception as e:
+        print(f"PostgreSQL baglantisi basarisiz: {e}. SQLite kullanilacak.")
         USE_PG = False
 
 if USE_PG:
-    import sqlite3 as _sqlite
 
     def get_db():
         conn = psycopg2.connect(_PG_URL)

@@ -14,28 +14,29 @@ SECRET_KEY = os.environ.get('LICENSE_SECRET', '5aa34376218593058b89fd8e8cfa695e2
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'benimtoken123')
 
 # --- Database abstraction ---
-_USE_PG_URL = os.environ.get("DATABASE_URL", "")
-USE_PG = bool(_USE_PG_URL)
+USE_PG = False
 
-if USE_PG:
+_PG_URL = os.environ.get("DATABASE_URL", "")
+if _PG_URL:
     try:
         import psycopg2
         import psycopg2.extras
-    except ImportError:
+        _test = psycopg2.connect(_PG_URL)
+        _test.close()
+        USE_PG = True
+    except Exception:
         USE_PG = False
 
 if USE_PG:
+    import sqlite3 as _sqlite
+
     def get_db():
-        conn = psycopg2.connect(_USE_PG_URL)
+        conn = psycopg2.connect(_PG_URL)
         conn.autocommit = True
         return conn
 
     def _q(sql):
         return sql.replace("?", "%s")
-
-    def _last_id(cur, conn):
-        cur.execute("SELECT LASTVAL()")
-        return cur.fetchone()[0]
 
     def _row_factory(cur):
         return [dict(r) for r in cur.fetchall()]
@@ -75,9 +76,6 @@ else:
     def _q(sql):
         return sql
 
-    def _last_id(cur, conn):
-        return cur.lastrowid
-
     def _row_factory(cur):
         return [dict(r) for r in cur.fetchall()]
 
@@ -115,7 +113,7 @@ def db_execute(sql, params=None, fetch=True):
             conn.commit()
         if fetch:
             return _row_factory(cur)
-        return _last_id(cur, conn)
+        return None
     finally:
         conn.close()
 

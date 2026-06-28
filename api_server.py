@@ -190,7 +190,7 @@ def get_real_ip() -> str:
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "version": "v6", "pg": USE_PG, "time": datetime.now().isoformat()})
+    return jsonify({"status": "ok", "version": "v7", "pg": USE_PG, "time": datetime.now().isoformat()})
 
 
 @app.route("/api/register", methods=["POST"])

@@ -349,6 +349,23 @@ def check():
         return jsonify({"valid": False, "reason": "Tarih hatası"})
 
 
+@app.route("/api/delete", methods=["POST"])
+def delete_licenses():
+    if ADMIN_TOKEN:
+        token = request.args.get("token", "")
+        if not token:
+            token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if token != ADMIN_TOKEN:
+            return jsonify({"error": "Yetkisiz erişim"}), 401
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids", [])
+    if not ids:
+        return jsonify({"success": False, "error": "ID gerekli"}), 400
+    placeholders = ",".join("?" for _ in ids)
+    db_execute(f"DELETE FROM licenses WHERE id IN ({placeholders})", ids, fetch=False)
+    return jsonify({"success": True, "deleted": len(ids)})
+
+
 @app.route("/")
 def dashboard():
     token = request.args.get("token", "")

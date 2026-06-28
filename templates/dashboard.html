@@ -99,10 +99,15 @@ tr:hover td { background: #f8f9fa; }
 
 <div class="card">
     <h2>📊 Lisans Kayıtları ({{ records|length }})</h2>
+    <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;">
+        <button class="btn btn-danger" id="delete_btn" onclick="deleteSelected()" disabled>🗑 Seçilenleri Sil</button>
+        <span class="text-muted" id="selected_count">Hiçbiri seçilmedi</span>
+    </div>
     <div class="table-wrap">
         <table id="licenses-table">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="select_all" onchange="toggleAll()"></th>
                     <th>#</th>
                     <th>Email</th>
                     <th>Hesap</th>
@@ -119,6 +124,7 @@ tr:hover td { background: #f8f9fa; }
             <tbody>
                 {% for r in records %}
                 <tr>
+                    <td><input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateDeleteBtn()"></td>
                     <td>{{ r.id }}</td>
                     <td>{{ r.email }}</td>
                     <td>{{ r.hesap or '-' }}</td>
@@ -153,7 +159,7 @@ tr:hover td { background: #f8f9fa; }
                 </tr>
                 {% endfor %}
                 {% if records|length == 0 %}
-                <tr><td colspan="11" class="empty-state">Henüz kayıt yok. Anahtar oluşturun.</td></tr>
+                <tr><td colspan="12" class="empty-state">Henüz kayıt yok. Anahtar oluşturun.</td></tr>
                 {% endif %}
             </tbody>
         </table>
@@ -263,6 +269,50 @@ function updateCountdowns() {
         parts2.push(d + ' dk');
         parts2.push(sn + ' sn');
         td.textContent = parts2.join(' ');
+    });
+}
+
+function toggleAll() {
+    const checked = document.getElementById('select_all').checked;
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+    updateDeleteBtn();
+}
+
+function updateDeleteBtn() {
+    const checked = document.querySelectorAll('.row-checkbox:checked').length;
+    const btn = document.getElementById('delete_btn');
+    btn.disabled = checked === 0;
+    document.getElementById('selected_count').textContent = checked === 0 ? 'Hiçbiri seçilmedi' : checked + ' kayıt seçildi';
+}
+
+function deleteSelected() {
+    const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.value));
+    if (ids.length === 0) return;
+    if (!confirm(ids.length + ' kaydı silmek istediğinize emin misiniz?')) return;
+
+    const btn = document.getElementById('delete_btn');
+    btn.disabled = true;
+    btn.textContent = 'Siliniyor...';
+
+    fetch(API_BASE + '/api/delete?token=' + encodeURIComponent(ADMIN_TOKEN), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+            btn.disabled = false;
+            btn.textContent = '🗑 Seçilenleri Sil';
+        }
+    })
+    .catch(e => {
+        alert('Bağlantı hatası: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '🗑 Seçilenleri Sil';
     });
 }
 

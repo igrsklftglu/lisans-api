@@ -137,7 +137,7 @@ def health():
 
 @app.route("/api/register", methods=["POST"])
 def register():
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    token = request.args.get("token", "") or request.headers.get("Authorization", "").replace("Bearer ", "")
     if token != ADMIN_TOKEN:
         return jsonify({"error": "Yetkisiz erişim"}), 401
 

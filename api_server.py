@@ -115,21 +115,6 @@ def get_real_ip() -> str:
     return request.remote_addr or "0.0.0.0"
 
 
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get("Authorization", "").replace("Bearer ", "")
-        if not token:
-            token = request.args.get("token", "")
-        if not token:
-            data = request.get_json(silent=True) or {}
-            token = data.get("token", "")
-        if not token or token != ADMIN_TOKEN:
-            return jsonify({"error": "Yetkisiz erişim"}), 401
-        return f(*args, **kwargs)
-    return decorated
-
-
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "time": datetime.now().isoformat()})

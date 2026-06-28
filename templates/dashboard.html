@@ -94,6 +94,7 @@ tr:hover td { background: #f8f9fa; }
         <div id="reg_info" style="margin-bottom:8px;font-size:13px;"></div>
         <pre id="reg_key_text"></pre>
         <button class="btn btn-danger" style="margin-top:10px;" onclick="copyKey()">📋 Kopyala</button>
+        <button class="btn" style="margin-top:10px;margin-left:8px;" onclick="closeResult()">✅ Tamam</button>
     </div>
 </div>
 
@@ -210,9 +211,7 @@ function registerKey() {
             document.getElementById('reg_info').textContent =
                 `📧 ${data.email} | Plan: ${data.plan.replace('month',' Ay').replace('suresiz','Süresiz')} | Bitiş: ${data.expiry === '00000000' ? 'Süresiz' : data.expiry}`;
             result.classList.add('show');
-            document.getElementById('reg_email').value = '';
-            document.getElementById('reg_hesap').value = '';
-            setTimeout(() => location.reload(), 1500);
+            document.getElementById('reg_btn').textContent = 'Oluştur';
         } else {
             err.textContent = data.error || 'Bilinmeyen hata';
             err.style.display = 'block';
@@ -226,6 +225,10 @@ function registerKey() {
         btn.disabled = false;
         btn.textContent = 'Oluştur';
     });
+}
+
+function closeResult() {
+    location.reload();
 }
 
 function copyKey() {

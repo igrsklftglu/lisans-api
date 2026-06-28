@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Lisans Yönetim Paneli</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f6fa; color: #333; padding: 30px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.header h1 { font-size: 24px; color: #2c3e50; }
+.header span { font-size: 13px; color: #888; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 25px; margin-bottom: 30px; }
+.card h2 { font-size: 18px; margin-bottom: 20px; color: #2c3e50; }
+.form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-group input, .form-group select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; min-width: 180px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #4A9EDA; box-shadow: 0 0 0 3px rgba(74,158,218,0.15); }
+.btn { background: #4A9EDA; color: #fff; border: none; border-radius: 8px; padding: 10px 28px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.btn:hover { background: #3B8EC8; }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+.btn-danger { background: #E74C3C; }
+.btn-danger:hover { background: #C0392B; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f8f9fa; color: #555; padding: 12px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #eee; white-space: nowrap; }
+td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+tr:hover td { background: #f8f9fa; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge-aktif { background: #d4edda; color: #155724; }
+.badge-doldu { background: #f8d7da; color: #721c24; }
+.badge-edilmedi { background: #fff3cd; color: #856404; }
+.badge-suresiz { background: #cce5ff; color: #004085; }
+.countdown { font-variant-numeric: tabular-nums; }
+.mt-10 { margin-top: 10px; }
+.mb-10 { margin-bottom: 10px; }
+.text-center { text-align: center; }
+.text-muted { color: #999; font-size: 12px; }
+.generated-key { margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c8e6c9; display: none; }
+.generated-key.show { display: block; }
+.generated-key pre { background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; font-family: 'Courier New', monospace; font-size: 14px; word-break: break-all; user-select: all; }
+.generated-key .label { font-size: 12px; color: #2e7d32; font-weight: 600; margin-bottom: 8px; }
+.error-msg { color: #E74C3C; font-size: 13px; margin-top: 8px; display: none; }
+.empty-state { padding: 40px; text-align: center; color: #999; }
+.login-prompt { text-align: center; padding: 60px 20px; }
+.login-prompt h2 { margin-bottom: 20px; }
+.login-prompt input { padding: 12px 20px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; min-width: 280px; margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+{% if not authorized %}
+<div class="login-prompt">
+    <h2>🔐 Lisans Yönetim Paneli</h2>
+    <form method="get" action="/">
+        <input type="password" name="token" placeholder="Yönetici Token Girin" autofocus>
+        <br>
+        <button type="submit" class="btn">Giriş Yap</button>
+    </form>
+</div>
+{% else %}
+
+<div class="header">
+    <h1>📋 Lisans Yönetim Paneli</h1>
+    <span>Token: <code style="background:#eee;padding:2px 8px;border-radius:4px;font-size:12px;">{{ token }}</code></span>
+</div>
+
+<div class="card">
+    <h2>🔑 Yeni Anahtar Oluştur</h2>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="reg_email" placeholder="ornek@email.com">
+        </div>
+        <div class="form-group">
+            <label>Hesap No</label>
+            <input type="text" id="reg_hesap" placeholder="123456">
+        </div>
+        <div class="form-group">
+            <label>Plan</label>
+            <select id="reg_plan">
+                <option value="1month">1 Ay (30 gün)</option>
+                <option value="3month">3 Ay (90 gün)</option>
+                <option value="6month">6 Ay (180 gün)</option>
+                <option value="12month">12 Ay (365 gün)</option>
+                <option value="suresiz">Süresiz (Lifetime)</option>
+            </select>
+        </div>
+        <button class="btn" id="reg_btn" onclick="registerKey()">Oluştur</button>
+    </div>
+    <div class="error-msg" id="reg_error"></div>
+    <div class="generated-key" id="reg_result">
+        <div class="label">✅ Anahtar Oluşturuldu</div>
+        <div id="reg_info" style="margin-bottom:8px;font-size:13px;"></div>
+        <pre id="reg_key_text"></pre>
+        <button class="btn btn-danger" style="margin-top:10px;" onclick="copyKey()">📋 Kopyala</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📊 Lisans Kayıtları ({{ records|length }})</h2>
+    <div class="table-wrap">
+        <table id="licenses-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Email</th>
+                    <th>Hesap</th>
+                    <th>Plan</th>
+                    <th>Bitiş</th>
+                    <th>Kalan Süre</th>
+                    <th>Durum</th>
+                    <th>Aktivasyon</th>
+                    <th>Son Görülme</th>
+                    <th>IP</th>
+                    <th>Oluşturulma</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>{{ r.hesap or '-' }}</td>
+                    <td>{{ r.plan.replace('month',' Ay').replace('suresiz','Süresiz') }}</td>
+                    <td>{{ r.expiry }}</td>
+                    <td class="countdown" data-expiry="{{ r.expiry }}" data-plan="{{ r.plan }}" data-activated="{{ r.activated_at }}">
+                        {% if r.remaining == -1 and r.status == 'Süresiz' %}
+                            Süresiz
+                        {% elif r.status == 'Aktif Edilmedi' %}
+                            -
+                        {% elif r.remaining == 0 %}
+                            <span style="color:red">Süresi Doldu</span>
+                        {% else %}
+                            {{ r.remaining }} gün
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.status == 'Aktif' %}
+                            <span class="badge badge-aktif">Aktif</span>
+                        {% elif r.status == 'Süresi Doldu' %}
+                            <span class="badge badge-doldu">Süresi Doldu</span>
+                        {% elif r.status == 'Süresiz' %}
+                            <span class="badge badge-suresiz">Süresiz</span>
+                        {% else %}
+                            <span class="badge badge-edilmedi">Aktif Edilmedi</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.activated_at[:10] if r.activated_at != '-' else '-' }}</td>
+                    <td>{{ r.last_check_at[:10] if r.last_check_at != '-' else '-' }}</td>
+                    <td style="font-family:monospace;font-size:12px;">{{ r.ip }}</td>
+                    <td>{{ r.created_at[:10] }}</td>
+                </tr>
+                {% endfor %}
+                {% if records|length == 0 %}
+                <tr><td colspan="11" class="empty-state">Henüz kayıt yok. Anahtar oluşturun.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const ADMIN_TOKEN = "{{ token }}";
+const API_BASE = "";
+
+function registerKey() {
+    const btn = document.getElementById('reg_btn');
+    const err = document.getElementById('reg_error');
+    const result = document.getElementById('reg_result');
+    err.style.display = 'none';
+    result.classList.remove('show');
+
+    const email = document.getElementById('reg_email').value.trim();
+    const hesap = document.getElementById('reg_hesap').value.trim();
+    const plan = document.getElementById('reg_plan').value;
+
+    if (!email || !email.includes('@')) {
+        err.textContent = 'Geçerli bir email girin';
+        err.style.display = 'block';
+        return;
+    }
+    if (!hesap || hesap.length < 4) {
+        err.textContent = 'Geçerli bir hesap no girin (en az 4 hane)';
+        err.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Oluşturuluyor...';
+
+    fetch(API_BASE + '/api/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + ADMIN_TOKEN
+        },
+        body: JSON.stringify({ email, plan, hesap })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('reg_key_text').textContent = data.key;
+            document.getElementById('reg_info').textContent =
+                `📧 ${data.email} | Plan: ${data.plan.replace('month',' Ay').replace('suresiz','Süresiz')} | Bitiş: ${data.expiry === '00000000' ? 'Süresiz' : data.expiry}`;
+            result.classList.add('show');
+            document.getElementById('reg_email').value = '';
+            document.getElementById('reg_hesap').value = '';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            err.textContent = data.error || 'Bilinmeyen hata';
+            err.style.display = 'block';
+        }
+    })
+    .catch(e => {
+        err.textContent = 'Sunucuya bağlanılamadı: ' + e.message;
+        err.style.display = 'block';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Oluştur';
+    });
+}
+
+function copyKey() {
+    const text = document.getElementById('reg_key_text').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✅ Kopyalandı!';
+        setTimeout(() => btn.textContent = orig, 2000);
+    });
+}
+
+function updateCountdowns() {
+    document.querySelectorAll('td.countdown').forEach(td => {
+        const expiry = td.dataset.expiry;
+        const plan = td.dataset.plan;
+        const activated = td.dataset.activated;
+
+        if (!expiry || expiry === '-' || expiry === 'Süresiz' || activated === '-' || activated === 'None') return;
+        if (expiry === 'Süresiz') { td.textContent = 'Süresiz'; return; }
+
+        const parts = expiry.split('.');
+        if (parts.length !== 3) return;
+        const target = new Date(parts[2], parts[1]-1, parts[0], 23, 59, 59);
+        const now = new Date();
+        const diff = target - now;
+
+        if (diff <= 0) {
+            td.innerHTML = '<span style="color:red">Süresi Doldu</span>';
+            return;
+        }
+
+        const totalSec = Math.floor(diff / 1000);
+        const g = Math.floor(totalSec / 86400);
+        const s = Math.floor((totalSec % 86400) / 3600);
+        const d = Math.floor((totalSec % 3600) / 60);
+        const sn = totalSec % 60;
+        let parts2 = [];
+        if (g > 0) parts2.push(g + ' gün');
+        if (s > 0) parts2.push(s + ' saat');
+        parts2.push(d + ' dk');
+        parts2.push(sn + ' sn');
+        td.textContent = parts2.join(' ');
+    });
+}
+
+setInterval(updateCountdowns, 1000);
+</script>
+
+{% endif %}
+</body>
+</html>

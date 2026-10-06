@@ -127,13 +127,13 @@ PLAN_DAYS = {"1month": 30, "3month": 90, "6month": 180, "12month": 365}
 PLAN_LIFETIME = ("suresiz", "0suresiz")
 
 
-def generate_key(email: str, plan: str) -> tuple:
+def generate_key(email: str, plan: str, hesap: str = "") -> tuple:
     if plan in PLAN_LIFETIME:
         expiry_ymd = "00000000"
     else:
         days = PLAN_DAYS.get(plan, 30)
         expiry_ymd = (datetime.now() + timedelta(days=days)).strftime("%Y%m%d")
-    payload = f"{email}|{plan}|{expiry_ymd}"
+    payload = f"{email}|{plan}|{expiry_ymd}|{hesap.strip()}"
     sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
     key = base64.b64encode(f"{payload}|{sig}".encode()).decode()
     return key, expiry_ymd
@@ -144,7 +144,14 @@ def verify_key_on_server(key: str, email: str) -> dict:
         raw = base64.b64decode(key.encode()).decode()
         parts = raw.split("|")
 
-        if len(parts) == 4:
+        k_hesap = ""
+        if len(parts) == 5:
+            k_email, k_plan, k_expiry, k_hesap, k_sig = parts
+            if len(k_expiry) == 8 and k_expiry.isdigit():
+                payload = f"{k_email}|{k_plan}|{k_expiry}|{k_hesap}"
+            else:
+                return {"valid": False, "reason": "Geçersiz anahtar formatı"}
+        elif len(parts) == 4:
             k_email, k_plan, k_expiry, k_sig = parts
             if len(k_expiry) == 8 and k_expiry.isdigit():
                 payload = f"{k_email}|{k_plan}|{k_expiry}"
@@ -169,7 +176,8 @@ def verify_key_on_server(key: str, email: str) -> dict:
         if k_plan not in PLAN_DAYS and k_plan not in PLAN_LIFETIME:
             return {"valid": False, "reason": "Geçersiz plan"}
 
-        return {"valid": True, "email": k_email, "plan": k_plan, "expiry": k_expiry}
+        return {"valid": True, "email": k_email, "plan": k_plan,
+                "expiry": k_expiry, "hesap": k_hesap}
 
     except Exception as e:
         return {"valid": False, "reason": f"Anahtar çözülemedi: {str(e)}"}
@@ -210,7 +218,7 @@ def register():
     plan = data.get("plan", "").strip()
     hesap = data.get("hesap", "").strip()
 
-    key, expiry_ymd = generate_key(email, plan)
+    key, expiry_ymd = generate_key(email, plan, hesap)
     key_hash = hashlib.sha256(key.encode()).hexdigest()
 
     try:
@@ -256,6 +264,8 @@ def verify():
         })
     row = rows[0]
 
+    hesap = (str(sig_result.get("hesap") or "").strip() or str(row["hesap"] or "").strip())
+
     if plan in PLAN_LIFETIME:
         db_expiry = "20991231"
     else:
@@ -297,7 +307,8 @@ def verify():
         "email": email,
         "plan": plan,
         "expiry": expiry_display,
-        "remaining_days": remaining
+        "remaining_days": remaining,
+        "hesap": hesap
     })
 
 
@@ -315,6 +326,8 @@ def check():
     if not rows:
         return jsonify({"valid": False, "reason": "Anahtar bulunamadı"})
     row = rows[0]
+
+    hesap = str(row["hesap"] or "").strip()
 
     plan = row["plan"]
     expiry = row["expiry"]
@@ -335,7 +348,8 @@ def check():
         return jsonify({
             "valid": True,
             "remaining_days": -1,
-            "expiry": "2099-12-31"
+            "expiry": "2099-12-31",
+            "hesap": hesap
         })
 
     try:
@@ -351,7 +365,8 @@ def check():
         return jsonify({
             "valid": True,
             "remaining_days": remaining,
-            "expiry": expiry_dt.strftime("%Y-%m-%d")
+            "expiry": expiry_dt.strftime("%Y-%m-%d"),
+            "hesap": hesap
         })
     except:
         return jsonify({"valid": False, "reason": "Tarih hatası"})

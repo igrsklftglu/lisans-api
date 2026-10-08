@@ -205,6 +205,52 @@ def health():
     return jsonify({"status": "ok", "version": "v7", "pg": USE_PG, "time": datetime.now().isoformat()})
 
 
+UPDATE_INFO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "update_info.json")
+
+
+def _load_update_info() -> dict:
+    """En son surum bilgisini dondurur: update_info.json + env (UPDATE_*) oncelikli."""
+    info = {
+        "last_version": "1.1.6",
+        "download_url": "",
+        "sha256": "",
+        "release_notes": "",
+    }
+    try:
+        if os.path.exists(UPDATE_INFO_FILE):
+            with open(UPDATE_INFO_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                info.update({k: v for k, v in data.items() if k in info and v})  
+    except Exception as e:
+        print(f"update_info.json okunamadi: {e}")
+
+    env_map = {
+        "last_version": "UPDATE_LATEST_VERSION",
+        "download_url": "UPDATE_DOWNLOAD_URL",
+        "sha256": "UPDATE_SHA256",
+        "release_notes": "UPDATE_NOTES",
+    }
+    for key, env_var in env_map.items():
+        val = os.environ.get(env_var, "")
+        if val:
+            info[key] = val
+    return info
+
+
+@app.route("/api/update", methods=["GET"])
+def update_info():
+    info = _load_update_info()
+    return jsonify({
+        "product": "XAUUSD_XAUEUR",
+        "last_version": info["last_version"],
+        "download_url": info["download_url"],
+        "sha256": info["sha256"],
+        "release_notes": info["release_notes"],
+        "checked_at": datetime.now().isoformat(),
+    })
+
+
 @app.route("/api/register", methods=["POST"])
 def register():
     if ADMIN_TOKEN:

@@ -1,6 +1,6 @@
 {
-  "last_version": "1.1.9",
-  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.1.9/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-  "sha256": "AD5782A417AAB6CB76FE641358837CB21D75705E78E14331361BBB994C4F50AC",
-  "release_notes": "Pencere basliginda lisans geri sayimi duzeltildi, bug duzeltmeleri"
+  "last_version": "1.2.0",
+  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.0/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+  "sha256": "3FB958125F43D6A18297C7C9E1F58580ED49A43E13C3711498D0E5CBEDF907B5",
+  "release_notes": "Lisanslar artık e-posta + broker hesap numarasına bağlı: hesap uyuşmazlığında giriş engellenir. Panelden mevcut lisansın hesap numarası değiştirilebilir (key aynı kalır)."
 }

@@ -264,6 +264,9 @@ def register():
     plan = data.get("plan", "").strip()
     hesap = data.get("hesap", "").strip()
 
+    if not email or not hesap:
+        return jsonify({"success": False, "error": "Email ve hesap numarası zorunlu"}), 400
+
     key, expiry_ymd = generate_key(email, plan, hesap)
     key_hash = hashlib.sha256(key.encode()).hexdigest()
 
@@ -290,6 +293,7 @@ def verify():
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     email = data.get("email", "").strip().lower()
+    giris_hesap = data.get("hesap", "").strip().lower()
 
     if not key or not email:
         return jsonify({"valid": False, "reason": "Eksik bilgi"}), 400
@@ -310,7 +314,14 @@ def verify():
         })
     row = rows[0]
 
-    hesap = (str(sig_result.get("hesap") or "").strip() or str(row["hesap"] or "").strip())
+    hesap = (str(row["hesap"] or "").strip() or str(sig_result.get("hesap") or "").strip())
+
+    # Girilen hesap key'e veya DB'ye bagli hesapla eslesmeli
+    if giris_hesap and hesap and giris_hesap != hesap.lower():
+        return jsonify({
+            "valid": False,
+            "reason": "Bu anahtar bu hesap numarasına bağlı değil"
+        })
 
     if plan in PLAN_LIFETIME:
         db_expiry = "20991231"
@@ -363,6 +374,7 @@ def check():
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     email = data.get("email", "").strip().lower()
+    giris_hesap = data.get("hesap", "").strip().lower()
 
     if not key or not email:
         return jsonify({"valid": False, "reason": "Eksik bilgi"}), 400
@@ -374,6 +386,10 @@ def check():
     row = rows[0]
 
     hesap = str(row["hesap"] or "").strip()
+
+    # Girilen hesap DB'deki hesapla eslesmeli
+    if giris_hesap and hesap and giris_hesap != hesap.lower():
+        return jsonify({"valid": False, "reason": "Hesap uyusmazligi: Bu anahtar bu hesap numarasına bağlı değil"})
 
     plan = row["plan"]
     expiry = row["expiry"]
@@ -416,6 +432,40 @@ def check():
         })
     except:
         return jsonify({"valid": False, "reason": "Tarih hatası"})
+
+
+@app.route("/api/update_hesap", methods=["POST"])
+def update_hesap():
+    if ADMIN_TOKEN:
+        token = request.args.get("token", "")
+        if not token:
+            token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if token != ADMIN_TOKEN:
+            return jsonify({"error": "Yetkisiz erişim"}), 401
+    data = request.get_json(silent=True) or {}
+    lid = data.get("id")
+    new_hesap = str(data.get("hesap", "")).strip()
+
+    if not lid:
+        return jsonify({"success": False, "error": "ID gerekli"}), 400
+    if not new_hesap or not new_hesap.isdigit():
+        return jsonify({"success": False, "error": "Geçerli bir hesap numarası girin"}), 400
+
+    rows = db_execute("SELECT * FROM licenses WHERE id = ?", (lid,))
+    if not rows:
+        return jsonify({"success": False, "error": "Kayıt bulunamadı"}), 404
+
+    db_execute(
+        "UPDATE licenses SET hesap = ? WHERE id = ?",
+        (new_hesap, lid),
+        fetch=False
+    )
+
+    return jsonify({
+        "success": True,
+        "hesap": new_hesap,
+        "key_degismedi": True
+    })
 
 
 @app.route("/api/delete", methods=["POST"])

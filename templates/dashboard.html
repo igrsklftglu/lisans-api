@@ -126,14 +126,14 @@ tr:hover td { background: #f8f9fa; }
             </thead>
             <tbody>
                 {% for r in records %}
-<tr>
-                <td><input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateDeleteBtn()"></td>
-                <td>{{ r.id }}</td>
-                <td>{{ r.email }}</td>
-                <td>
-                    <span style="margin-right:8px;">{{ r.hesap or '-' }}</span>
-                    <button class="btn btn-small" onclick="changeHesap({{ r.id }})" title="Hesap Numarasını Değiştir">✏️</button>
-                </td>
+                <tr>
+                    <td><input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateDeleteBtn()"></td>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>
+                        <span style="margin-right:8px;">{{ r.hesap or '-' }}</span>
+                        <button class="btn btn-small" onclick="changeHesap({{ r.id }})" title="Hesap Numarasını Değiştir">✏️</button>
+                    </td>
                     <td>{{ r.plan.replace('month',' Ay').replace('suresiz','Süresiz') }}</td>
                     <td>{{ r.expiry }}</td>
                     <td class="countdown" data-expiry="{{ r.expiry }}" data-plan="{{ r.plan }}" data-activated="{{ r.activated_at }}">

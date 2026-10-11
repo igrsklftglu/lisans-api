@@ -1,6 +1,6 @@
 {
-  "last_version": "1.2.2",
-  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.2/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-  "sha256": "16B0811F9B706154CE84F2607C4546D096FDB64CABA56E2D44D13684AB255A56",
-  "release_notes": "Lisans-Hesap Korumasi: Bot artik MT5'e baglanirken gercek hesap numarasini merkezi olarak dogrular. Lisansin bagli oldugu hesap disinda bir hesaba baglanilamaz."
+  "last_version": "1.2.3",
+  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.3/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+  "sha256": "771B3626DA6D0B45793D416236469FCA0DD6841D236AEBA3A319BD3633DF9065",
+  "release_notes": "Guvenlik guncellemesi: Lisans dogrulamasi asimetrik (Ed25519) imza tabanli yeni formata tasindi. Lisans artik bagli oldugu MT5 hesabina kilitli. Mevcut lisanslar ilk acilista otomatik olarak yeni guvenli anahtara gecirilir; kalan sureleri korunur."
 }

@@ -3,8 +3,13 @@
 Admin CLI - Lisans anahtari uretme araci
 Kullanim: python generate_key.py <email> <plan>
 
-Planlar: 0suresiz, 1month, 3month, 6month, 12month
+Planlar: 0suresiz, 1month, 3month, 6month, 9month, 12month
 Ornek: python generate_key.py musteri@email.com 1month
+
+NOT: Bu arac YEREL (offline) anahtar uretir. Uretilen anahtar sunucu
+veritabanina kaydedilmedigi icin bot tarafinda /api/check anahtari
+BULAMAZ. Canli anahtar uretiminde panel (dashboard) veya key_uret.py
+(LISANS_API_URL tanimli) kullanilmalidir.
 """
 import sys
 import os
@@ -24,12 +29,14 @@ PLANS = {
     "1month": "1month",
     "3month": "3month",
     "6month": "6month",
+    "9month": "9month",
     "12month": "12month",
 }
 PLAN_DAYS = {
     "1month": 30,
     "3month": 90,
     "6month": 180,
+    "9month": 270,
     "12month": 365,
 }
 
@@ -60,8 +67,10 @@ def generate_key(email: str, plan: str) -> str:
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Kullanim: python generate_key.py <email> <plan>")
-        print("Planlar: 0suresiz, 1month, 3month, 6month, 12month")
+        print("Planlar: 0suresiz, 1month, 3month, 6month, 9month, 12month")
         print("\nOrnek: python generate_key.py musteri@email.com 1month")
+        print("\nNOT: Yerel anahtar uretir; sunucuda kayitli olmadigi icin bot")
+        print("     /api/check'te bulamaz. Uretimde panel/dashboard kullanin.")
         sys.exit(1)
 
     email = sys.argv[1]

@@ -84,6 +84,7 @@ tr:hover td { background: #f8f9fa; }
                 <option value="1month">1 Ay (30 gün)</option>
                 <option value="3month">3 Ay (90 gün)</option>
                 <option value="6month">6 Ay (180 gün)</option>
+                <option value="9month">9 Ay (270 gün)</option>
                 <option value="12month">12 Ay (365 gün)</option>
                 <option value="suresiz">Süresiz (Lifetime)</option>
             </select>
@@ -126,14 +127,14 @@ tr:hover td { background: #f8f9fa; }
             </thead>
             <tbody>
                 {% for r in records %}
-                <tr>
-                    <td><input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateDeleteBtn()"></td>
-                    <td>{{ r.id }}</td>
-                    <td>{{ r.email }}</td>
-                    <td>
-                        <span style="margin-right:8px;">{{ r.hesap or '-' }}</span>
-                        <button class="btn btn-small" onclick="changeHesap({{ r.id }})" title="Hesap Numarasını Değiştir">✏️</button>
-                    </td>
+<tr>
+                <td><input type="checkbox" class="row-checkbox" value="{{ r.id }}" onchange="updateDeleteBtn()"></td>
+                <td>{{ r.id }}</td>
+                <td>{{ r.email }}</td>
+                <td>
+                    <span style="margin-right:8px;">{{ r.hesap or '-' }}</span>
+                    <button class="btn btn-small" onclick="changeHesap({{ r.id }})" title="Hesap Numarasını Değiştir">✏️</button>
+                </td>
                     <td>{{ r.plan.replace('month',' Ay').replace('suresiz','Süresiz') }}</td>
                     <td>{{ r.expiry }}</td>
                     <td class="countdown" data-expiry="{{ r.expiry }}" data-plan="{{ r.plan }}" data-activated="{{ r.activated_at }}">
@@ -171,10 +172,12 @@ tr:hover td { background: #f8f9fa; }
         </table>
     </div>
     <div class="generated-key" id="hesap_result">
-        <div class="label">✅ Hesap Numarası Değiştirildi</div>
+        <div class="label">✅ Hesap Numarası Değiştirildi — YENİ ANAHTAR</div>
         <div id="hesap_info" style="margin-bottom:8px;font-size:13px;"></div>
-        <div style="font-size:12px;margin-bottom:10px;">Anahtar numarası değişmedi — müşteri mevcut anahtarla yeni hesabına kullanmaya devam eder.</div>
-        <button class="btn" style="margin-top:10px;" onclick="closeHesapResult()">✅ Tamam</button>
+        <div style="font-size:12px;margin-bottom:6px;color:#b00020;">⚠️ Anahtar hesaba bağlı olduğu için değişti. Aşağıdaki YENİ anahtarı müşteriye gönderin.</div>
+        <pre id="hesap_key_text"></pre>
+        <button class="btn" style="margin-top:10px;" onclick="copyHesapKey()">📋 Kopyala</button>
+        <button class="btn" style="margin-top:10px;margin-left:8px;" onclick="closeHesapResult()">✅ Tamam</button>
     </div>
 </div>
 
@@ -348,6 +351,7 @@ function changeHesap(id) {
     .then(data => {
         if (data.success) {
             document.getElementById('hesap_info').textContent = 'Yeni Hesap: ' + data.hesap;
+            document.getElementById('hesap_key_text').textContent = data.key || '(anahtar üretilemedi)';
             document.getElementById('hesap_result').classList.add('show');
             document.getElementById('hesap_result').scrollIntoView({ behavior: 'smooth' });
         } else {
@@ -357,6 +361,14 @@ function changeHesap(id) {
     .catch(e => {
         alert('Bağlantı hatası: ' + e.message);
     });
+}
+
+function copyHesapKey() {
+    const text = document.getElementById('hesap_key_text').textContent;
+    if (!text) return;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => alert('Yeni anahtar kopyalandı')).catch(() => {});
+    }
 }
 
 function closeHesapResult() {

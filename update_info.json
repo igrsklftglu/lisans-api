@@ -1,6 +1,6 @@
 {
-  "last_version": "1.2.1",
-  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.1/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-  "sha256": "EB9B6FA55E992C88CE84EB630087BBE4AE622E37B31C26DCD9061261473FEF9E",
-  "release_notes": "ULTRA SAFE modu güncellendi: daha fazla işlem bulması için eşikler gevşetildi (çoklu zaman dilimi uyumu 5/10, ADX eşiği 23, DI farkı 9)."
+  "last_version": "1.2.2",
+  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.2/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+  "sha256": "16B0811F9B706154CE84F2607C4546D096FDB64CABA56E2D44D13684AB255A56",
+  "release_notes": "Lisans-Hesap Korumasi: Bot artik MT5'e baglanirken gercek hesap numarasini merkezi olarak dogrular. Lisansin bagli oldugu hesap disinda bir hesaba baglanilamaz."
 }

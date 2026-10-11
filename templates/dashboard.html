@@ -85,7 +85,7 @@ tr:hover td { background: #f8f9fa; }
                 <option value="3month">3 Ay (90 gün)</option>
                 <option value="6month">6 Ay (180 gün)</option>
                 <option value="9month">9 Ay (270 gün)</option>
-                <option value="12month">12 Ay (365 gün)</option>
+                <option value="12month">1 Yıl (365 gün)</option>
                 <option value="suresiz">Süresiz (Lifetime)</option>
             </select>
         </div>
@@ -135,7 +135,7 @@ tr:hover td { background: #f8f9fa; }
                     <span style="margin-right:8px;">{{ r.hesap or '-' }}</span>
                     <button class="btn btn-small" onclick="changeHesap({{ r.id }})" title="Hesap Numarasını Değiştir">✏️</button>
                 </td>
-                    <td>{{ r.plan.replace('month',' Ay').replace('suresiz','Süresiz') }}</td>
+                    <td>{{ r.plan.replace('12month','1 Yıl').replace('month',' Ay').replace('suresiz','Süresiz') }}</td>
                     <td>{{ r.expiry }}</td>
                     <td class="countdown" data-expiry="{{ r.expiry }}" data-plan="{{ r.plan }}" data-activated="{{ r.activated_at }}">
                         {% if r.remaining == -1 and r.status == 'Süresiz' %}
@@ -223,7 +223,7 @@ function registerKey() {
         if (data.success) {
             document.getElementById('reg_key_text').textContent = data.key;
             document.getElementById('reg_info').textContent =
-                `📧 ${data.email} | Plan: ${data.plan.replace('month',' Ay').replace('suresiz','Süresiz')} | Bitiş: ${data.expiry === '00000000' ? 'Süresiz' : data.expiry}`;
+                `📧 ${data.email} | Plan: ${data.plan.replace('12month','1 Yıl').replace('month',' Ay').replace('suresiz','Süresiz')} | Bitiş: ${data.expiry === '00000000' ? 'Süresiz' : data.expiry}`;
             result.classList.add('show');
             document.getElementById('reg_btn').textContent = 'Oluştur';
         } else {

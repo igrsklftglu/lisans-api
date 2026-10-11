@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 SECRET = "5aa34376218593058b89fd8e8cfa695e26f25980a999e98cd76c9e86cd81db8e"
 
 API_URL = os.environ.get("LISANS_API_URL", "").rstrip("/")
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "benimtoken123")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
+if not ADMIN_TOKEN:
+    raise SystemExit("ADMIN_TOKEN ortam degiskeni tanimli degil. Once ayarla (orn: set ADMIN_TOKEN=tradedogruadreste34)")
 
-plan_days = {"1": 30, "3": 90, "6": 180, "9": 270, "12": 365}
+plan_days = {"1": 30, "3": 90, "6": 180, "12": 365}
 plan_lifetime = {"0": "suresiz"}
 
 print("=" * 60)
@@ -24,9 +26,9 @@ email = input("\nMusterinin Email Adresi: ").strip()
 while not re.match(r"[^@]+@[^@]+\.[^@]+", email):
     email = input("Geçerli email girin: ").strip()
 
-plan = input("\nPlan (0=suresiz / 1/3/6/9/12 ay): ").strip()
+plan = input("\nPlan (0=suresiz / 1/3/6/12 ay): ").strip()
 while plan not in plan_days and plan not in plan_lifetime:
-    plan = input("0, 1, 3, 6, 9 veya 12 girin: ").strip()
+    plan = input("0, 1, 3, 6 veya 12 girin: ").strip()
 
 plan_adi = "suresiz" if plan == "0" else f"{plan}month"
 
@@ -36,36 +38,9 @@ if plan == "0":
 else:
     expiry_ymd = (datetime.now() + timedelta(days=plan_days[plan])).strftime("%Y%m%d")
 
-# Once sunucudan gecerli anahtari al (varsa); yoksa yerel uret.
-server_key = None
-if API_URL:
-    try:
-        data = json.dumps({"email": email, "plan": plan_adi, "hesap": hesap}).encode()
-        req = urllib.request.Request(
-            f"{API_URL}/api/register?token={ADMIN_TOKEN}",
-            data=data,
-            headers={"Content-Type": "application/json"}
-        )
-        resp = urllib.request.urlopen(req, timeout=15)
-        result = json.loads(resp.read())
-        if result.get("key"):
-            server_key = result["key"]
-            print(f"[OK] Sunucu kaydi basarili, gecerli anahtar alindi: {API_URL}")
-        else:
-            print(f"[!] API kayit basarisiz: {result.get('error', '?')}")
-    except Exception as e:
-        print(f"[!] API'ye kayit yapilamadi: {e}")
-else:
-    print("[!] LISANS_API_URL tanimli degil, sadece local kayit yapildi")
-    print("    Export yap: set LISANS_API_URL=https://xxx.onrender.com")
-
-if server_key:
-    key = server_key
-else:
-    payload = f"{email}|{plan_adi}|{expiry_ymd}"
-    sig = hmac.new(SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
-    key = base64.b64encode(f"{payload}|{sig}".encode()).decode()
-    print("[!] UYARI: Anahtar YEREL uretildi (HMAC). Sunucuda kayit yoksa bot bu anahtari bulamaz!")
+payload = f"{email}|{plan_adi}|{expiry_ymd}"
+sig = hmac.new(SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+key = base64.b64encode(f"{payload}|{sig}".encode()).decode()
 
 now = datetime.now().strftime("%Y-%m-%d %H:%M")
 now_iso = datetime.now().isoformat()
@@ -78,6 +53,28 @@ print(f"  Plan:     {'Süresiz' if plan == '0' else f'{plan} ay ({plan_days[plan
 print(f"  Bitiş:    {bitis_str}")
 print(f"  Anahtar:  {key}")
 print("=" * 60)
+
+# === API KAYDI (opsiyonel) ===
+if API_URL:
+    try:
+        data = json.dumps({"email": email, "plan": plan_adi, "hesap": hesap}).encode()
+        req = urllib.request.Request(
+            f"{API_URL}/api/register?token={ADMIN_TOKEN}",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        resp = urllib.request.urlopen(req, timeout=10)
+        result = json.loads(resp.read())
+        if result.get("success"):
+            print(f"[OK] API kayit basarili: {API_URL}")
+        else:
+            print(f"[!] API kayit basarisiz: {result.get('error', '?')}")
+    except Exception as e:
+        print(f"[!] API'ye kayit yapilamadi: {e}")
+        print("    (Local kayit devam ediyor)")
+else:
+    print("[!] LISANS_API_URL tanimli degil, sadece local kayit yapildi")
+    print("    Export yap: set LISANS_API_URL=https://xxx.onrender.com")
 
 # === KAYIT DOSYASI ===
 desktop = os.path.join(os.path.expanduser("~"), "Desktop")

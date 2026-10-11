@@ -8,41 +8,12 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 
-import signing
-
 app = Flask(__name__)
 
 SECRET_KEY = os.environ.get('LICENSE_SECRET', '5aa34376218593058b89fd8e8cfa695e26f25980a999e98cd76c9e86cd81db8e')
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'benimtoken123')
-
-# --- Ed25519 lisans imzalama anahtarlari (yeni "v2" format) ---
-# Ozel anahtar SADECE sunucuda (Render env LICENSE_PRIVATE_KEY). Istenirse
-# yuksek seviye acik anahtar da verilebilir; yoksa ozelden turetilir.
-_PK_B64 = os.environ.get('LICENSE_PRIVATE_KEY', '')
-_PUB_B64 = os.environ.get('LICENSE_PUBLIC_KEY', '')
-
-_KEYS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'signing_keys.local.json')
-if (not _PK_B64) and os.path.exists(_KEYS_FILE):
-    try:
-        with open(_KEYS_FILE, 'r', encoding='utf-8') as _f:
-            _kd = json.load(_f)
-        _PK_B64 = _PK_B64 or _kd.get('LICENSE_PRIVATE_KEY', '')
-        _PUB_B64 = _PUB_B64 or _kd.get('LICENSE_PUBLIC_KEY', '')
-    except Exception:
-        pass
-
-
-def _b64d(s):
-    try:
-        return base64.b64decode(s) if s else None
-    except Exception:
-        return None
-
-
-PRIVATE_KEY = _b64d(_PK_B64)
-PUBLIC_KEY = _b64d(_PUB_B64)
-if PUBLIC_KEY is None and PRIVATE_KEY is not None:
-    PUBLIC_KEY = signing.publickey(PRIVATE_KEY)
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', '').strip()
+if not ADMIN_TOKEN:
+    raise RuntimeError("ADMIN_TOKEN ortam degiskeni tanimli degil. Guvenlik icin zorunludur.")
 
 # --- Database abstraction ---
 USE_PG = False
@@ -93,7 +64,6 @@ if USE_PG:
                 );
             '''))
             cur.execute(_q('CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);'))
-            cur.execute(_q('ALTER TABLE licenses ADD COLUMN IF NOT EXISTS legacy_key_hash TEXT;'))
         conn.close()
 
 else:
@@ -132,10 +102,6 @@ else:
             );
         ''')
         conn.execute('CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);')
-        try:
-            conn.execute('ALTER TABLE licenses ADD COLUMN legacy_key_hash TEXT')
-        except Exception:
-            pass
         conn.commit()
         conn.close()
 
@@ -159,25 +125,18 @@ def db_execute(sql, params=None, fetch=True):
         conn.close()
 
 
-PLAN_DAYS = {"1month": 30, "3month": 90, "6month": 180, "9month": 270, "12month": 365}
+PLAN_DAYS = {"1month": 30, "3month": 90, "6month": 180, "12month": 365}
 PLAN_LIFETIME = ("suresiz", "0suresiz")
 
 
-def generate_key(email: str, plan: str, hesap: str = "", expiry_ymd: str = "") -> tuple:
-    if not expiry_ymd:
-        if plan in PLAN_LIFETIME:
-            expiry_ymd = "00000000"
-        else:
-            days = PLAN_DAYS.get(plan, 30)
-            expiry_ymd = (datetime.now() + timedelta(days=days)).strftime("%Y%m%d")
-    if PRIVATE_KEY is not None:
-        # Yeni v2: Ed25519 OZEL anahtarla imzalanir
-        payload = f"v2|{email}|{plan}|{expiry_ymd}|{hesap.strip()}"
-        sig = base64.b64encode(signing.sign(payload.encode(), PRIVATE_KEY)).decode()
+def generate_key(email: str, plan: str) -> tuple:
+    if plan in PLAN_LIFETIME:
+        expiry_ymd = "00000000"
     else:
-        # Ozel anahtar tanimli degilse eski v1 (HMAC) ile uret
-        payload = f"{email}|{plan}|{expiry_ymd}|{hesap.strip()}"
-        sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+        days = PLAN_DAYS.get(plan, 30)
+        expiry_ymd = (datetime.now() + timedelta(days=days)).strftime("%Y%m%d")
+    payload = f"{email}|{plan}|{expiry_ymd}"
+    sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
     key = base64.b64encode(f"{payload}|{sig}".encode()).decode()
     return key, expiry_ymd
 
@@ -185,45 +144,9 @@ def generate_key(email: str, plan: str, hesap: str = "", expiry_ymd: str = "") -
 def verify_key_on_server(key: str, email: str) -> dict:
     try:
         raw = base64.b64decode(key.encode()).decode()
-
-        # --- Yeni v2 (Ed25519) ---
-        if raw.startswith("v2|"):
-            parts = raw.split("|")
-            if len(parts) != 6:
-                return {"valid": False, "reason": "Geçersiz anahtar formatı"}
-            _, k_email, k_plan, k_expiry, k_hesap, k_sig_b64 = parts
-            if PUBLIC_KEY is None:
-                return {"valid": False, "reason": "Sunucu imza anahtarı tanımlı değil"}
-            try:
-                sig_bytes = base64.b64decode(k_sig_b64)
-            except Exception:
-                return {"valid": False, "reason": "Geçersiz anahtar formatı"}
-            payload = f"v2|{k_email}|{k_plan}|{k_expiry}|{k_hesap}"
-            if not signing.verify(sig_bytes, payload.encode(), PUBLIC_KEY):
-                return {"valid": False, "reason": "Geçersiz imza"}
-            if k_plan not in PLAN_DAYS and k_plan not in PLAN_LIFETIME:
-                return {"valid": False, "reason": "Geçersiz plan"}
-            if email and email.lower() != k_email.lower():
-                return {"valid": False, "reason": "Email uyuşmuyor"}
-            return {
-                "valid": True,
-                "email": k_email,
-                "plan": k_plan,
-                "expiry": k_expiry,
-                "hesap": k_hesap,
-            }
-
-        # --- Eski v1 (HMAC) ---
         parts = raw.split("|")
 
-        k_hesap = ""
-        if len(parts) == 5:
-            k_email, k_plan, k_expiry, k_hesap, k_sig = parts
-            if len(k_expiry) == 8 and k_expiry.isdigit():
-                payload = f"{k_email}|{k_plan}|{k_expiry}|{k_hesap}"
-            else:
-                return {"valid": False, "reason": "Geçersiz anahtar formatı"}
-        elif len(parts) == 4:
+        if len(parts) == 4:
             k_email, k_plan, k_expiry, k_sig = parts
             if len(k_expiry) == 8 and k_expiry.isdigit():
                 payload = f"{k_email}|{k_plan}|{k_expiry}"
@@ -231,74 +154,27 @@ def verify_key_on_server(key: str, email: str) -> dict:
                 return {"valid": False, "reason": "Geçersiz anahtar formatı"}
         elif len(parts) == 3:
             k_email, k_plan, k_sig = parts
-            k_expiry = ""
             payload = f"{k_email}|{k_plan}"
         else:
             return {"valid": False, "reason": "Geçersiz anahtar formatı"}
 
-        sig = hmac.new(
+        expected_sig = hmac.new(
             SECRET_KEY.encode(), payload.encode(), hashlib.sha256
         ).hexdigest()[:16]
-        if not hmac.compare_digest(k_sig, sig):
-            return {"valid": False, "reason": "Geçersiz imza"}
 
-        if email and email.lower() != k_email.lower():
-            return {"valid": False, "reason": "Email uyuşmuyor"}
+        if not hmac.compare_digest(k_sig, expected_sig):
+            return {"valid": False, "reason": "Anahtar imzası geçersiz (sahte anahtar)"}
 
-        return {
-            "valid": True,
-            "email": k_email,
-            "plan": k_plan,
-            "expiry": k_expiry if len(parts) >= 4 else "",
-            "hesap": k_hesap,
-        }
+        if k_email.lower() != email.lower():
+            return {"valid": False, "reason": "Bu anahtar bu email adresine ait değil"}
+
+        if k_plan not in PLAN_DAYS and k_plan not in PLAN_LIFETIME:
+            return {"valid": False, "reason": "Geçersiz plan"}
+
+        return {"valid": True, "email": k_email, "plan": k_plan, "expiry": k_expiry}
+
     except Exception as e:
         return {"valid": False, "reason": f"Anahtar çözülemedi: {str(e)}"}
-
-
-def _key_is_v2(key: str) -> bool:
-    try:
-        return base64.b64decode(key.encode()).decode().startswith("v2|")
-    except Exception:
-        return False
-
-
-def _row_expiry_ymd(row) -> str:
-    """DB satirindan anahtara gomulecek expiry (lifetime -> 00000000)."""
-    plan = row["plan"]
-    if plan in PLAN_LIFETIME:
-        return "00000000"
-    e = str(row["expiry"] or "").strip()
-    if len(e) == 8 and e.isdigit():
-        return e
-    return ""
-
-
-def maybe_reissue_key(row, key: str, supports_v2: bool):
-    """Yeni istemci icin: mevcut anahtar DB ile uyusmuyorsa, ayni plan/sure/hesapla
-    yeni bir v2 anahtar uretir; DB'yi gunceller ve yeni anahtari dondurur.
-    Gerek yoksa None dondurur. (Ed25519 imzalari deterministiktir.)"""
-    if not supports_v2 or PRIVATE_KEY is None:
-        return None
-    try:
-        plan = row["plan"]
-        hesap = str(row["hesap"] or "")
-        email = row["email"]
-        exp = _row_expiry_ymd(row)
-        canon_key, _ = generate_key(email, plan, hesap, expiry_ymd=exp)
-        if canon_key == key:
-            return None
-        old_hash = hashlib.sha256(key.encode()).hexdigest()
-        new_hash = hashlib.sha256(canon_key.encode()).hexdigest()
-        db_execute(
-            "UPDATE licenses SET key_hash = ?, legacy_key_hash = ? WHERE id = ?",
-            (new_hash, old_hash, row["id"]),
-            fetch=False,
-        )
-        return canon_key
-    except Exception as e:
-        print(f"Anahtar yukseltme hatasi: {e}")
-        return None
 
 
 def kalan_gun(expiry: str, plan: str) -> int:
@@ -323,52 +199,6 @@ def health():
     return jsonify({"status": "ok", "version": "v7", "pg": USE_PG, "time": datetime.now().isoformat()})
 
 
-UPDATE_INFO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "update_info.json")
-
-
-def _load_update_info() -> dict:
-    """En son surum bilgisini dondurur: update_info.json + env (UPDATE_*) oncelikli."""
-    info = {
-        "last_version": "1.1.6",
-        "download_url": "",
-        "sha256": "",
-        "release_notes": "",
-    }
-    try:
-        if os.path.exists(UPDATE_INFO_FILE):
-            with open(UPDATE_INFO_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                info.update({k: v for k, v in data.items() if k in info and v})  
-    except Exception as e:
-        print(f"update_info.json okunamadi: {e}")
-
-    env_map = {
-        "last_version": "UPDATE_LATEST_VERSION",
-        "download_url": "UPDATE_DOWNLOAD_URL",
-        "sha256": "UPDATE_SHA256",
-        "release_notes": "UPDATE_NOTES",
-    }
-    for key, env_var in env_map.items():
-        val = os.environ.get(env_var, "")
-        if val:
-            info[key] = val
-    return info
-
-
-@app.route("/api/update", methods=["GET"])
-def update_info():
-    info = _load_update_info()
-    return jsonify({
-        "product": "XAUUSD_XAUEUR",
-        "last_version": info["last_version"],
-        "download_url": info["download_url"],
-        "sha256": info["sha256"],
-        "release_notes": info["release_notes"],
-        "checked_at": datetime.now().isoformat(),
-    })
-
-
 @app.route("/api/register", methods=["POST"])
 def register():
     if ADMIN_TOKEN:
@@ -385,7 +215,7 @@ def register():
     if not email or not hesap:
         return jsonify({"success": False, "error": "Email ve hesap numarası zorunlu"}), 400
 
-    key, expiry_ymd = generate_key(email, plan, hesap)
+    key, expiry_ymd = generate_key(email, plan)
     key_hash = hashlib.sha256(key.encode()).hexdigest()
 
     try:
@@ -411,7 +241,7 @@ def verify():
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     email = data.get("email", "").strip().lower()
-    giris_hesap = data.get("hesap", "").strip().lower()
+    hesap = data.get("hesap", "").strip().lower()
 
     if not key or not email:
         return jsonify({"valid": False, "reason": "Eksik bilgi"}), 400
@@ -432,10 +262,8 @@ def verify():
         })
     row = rows[0]
 
-    hesap = (str(row["hesap"] or "").strip() or str(sig_result.get("hesap") or "").strip())
-
-    # Girilen hesap key'e veya DB'ye bagli hesapla eslesmeli
-    if giris_hesap and hesap and giris_hesap != hesap.lower():
+    db_hesap = (row["hesap"] or "").strip().lower()
+    if db_hesap and hesap != db_hesap:
         return jsonify({
             "valid": False,
             "reason": "Bu anahtar bu hesap numarasına bağlı değil"
@@ -482,8 +310,7 @@ def verify():
         "email": email,
         "plan": plan,
         "expiry": expiry_display,
-        "remaining_days": remaining,
-        "hesap": hesap
+        "remaining_days": remaining
     })
 
 
@@ -492,25 +319,19 @@ def check():
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     email = data.get("email", "").strip().lower()
-    giris_hesap = data.get("hesap", "").strip().lower()
-    supports_v2 = bool(data.get("v2"))
+    hesap = data.get("hesap", "").strip().lower()
 
     if not key or not email:
         return jsonify({"valid": False, "reason": "Eksik bilgi"}), 400
 
     key_hash = hashlib.sha256(key.encode()).hexdigest()
-    rows = db_execute(
-        "SELECT * FROM licenses WHERE key_hash = ? OR legacy_key_hash = ?",
-        (key_hash, key_hash),
-    )
+    rows = db_execute("SELECT * FROM licenses WHERE key_hash = ?", (key_hash,))
     if not rows:
         return jsonify({"valid": False, "reason": "Anahtar bulunamadı"})
     row = rows[0]
 
-    hesap = str(row["hesap"] or "").strip()
-
-    # Girilen hesap DB'deki hesapla eslesmeli
-    if giris_hesap and hesap and giris_hesap != hesap.lower():
+    db_hesap = (row["hesap"] or "").strip().lower()
+    if db_hesap and hesap != db_hesap:
         return jsonify({"valid": False, "reason": "Hesap uyusmazligi: Bu anahtar bu hesap numarasına bağlı değil"})
 
     plan = row["plan"]
@@ -529,16 +350,11 @@ def check():
         })
 
     if plan in PLAN_LIFETIME or expiry == "20991231":
-        new_key = maybe_reissue_key(row, key, supports_v2)
-        resp = {
+        return jsonify({
             "valid": True,
             "remaining_days": -1,
-            "expiry": "2099-12-31",
-            "hesap": hesap
-        }
-        if new_key:
-            resp["new_key"] = new_key
-        return jsonify(resp)
+            "expiry": "2099-12-31"
+        })
 
     try:
         expiry_dt = datetime.strptime(expiry, "%Y%m%d")
@@ -550,69 +366,13 @@ def check():
                 "reason": "Lisans süresi doldu"
             })
         remaining = kalan_gun(expiry, plan)
-        new_key = maybe_reissue_key(row, key, supports_v2)
-        resp = {
+        return jsonify({
             "valid": True,
             "remaining_days": remaining,
-            "expiry": expiry_dt.strftime("%Y-%m-%d"),
-            "hesap": hesap
-        }
-        if new_key:
-            resp["new_key"] = new_key
-        return jsonify(resp)
+            "expiry": expiry_dt.strftime("%Y-%m-%d")
+        })
     except:
         return jsonify({"valid": False, "reason": "Tarih hatası"})
-
-
-@app.route("/api/update_hesap", methods=["POST"])
-def update_hesap():
-    if ADMIN_TOKEN:
-        token = request.args.get("token", "")
-        if not token:
-            token = request.headers.get("Authorization", "").replace("Bearer ", "")
-        if token != ADMIN_TOKEN:
-            return jsonify({"error": "Yetkisiz erişim"}), 401
-    data = request.get_json(silent=True) or {}
-    lid = data.get("id")
-    new_hesap = str(data.get("hesap", "")).strip()
-
-    if not lid:
-        return jsonify({"success": False, "error": "ID gerekli"}), 400
-    if not new_hesap or not new_hesap.isdigit():
-        return jsonify({"success": False, "error": "Geçerli bir hesap numarası girin"}), 400
-
-    rows = db_execute("SELECT * FROM licenses WHERE id = ?", (lid,))
-    if not rows:
-        return jsonify({"success": False, "error": "Kayıt bulunamadı"}), 404
-    row = rows[0]
-
-    db_execute(
-        "UPDATE licenses SET hesap = ? WHERE id = ?",
-        (new_hesap, lid),
-        fetch=False
-    )
-
-    # Hesap degisince lisans anahtari da yeniden uretilir (imza hesabi kapsar)
-    new_key = None
-    try:
-        exp = _row_expiry_ymd(row)
-        old_hash = str(row["key_hash"] or "")
-        new_key, _ = generate_key(row["email"], row["plan"], new_hesap, expiry_ymd=exp)
-        new_hash = hashlib.sha256(new_key.encode()).hexdigest()
-        db_execute(
-            "UPDATE licenses SET key_hash = ?, legacy_key_hash = ? WHERE id = ?",
-            (new_hash, old_hash, lid),
-            fetch=False
-        )
-    except Exception as e:
-        return jsonify({"success": False, "error": f"Anahtar üretilemedi: {e}"}), 500
-
-    return jsonify({
-        "success": True,
-        "hesap": new_hesap,
-        "key": new_key,
-        "key_degismedi": False
-    })
 
 
 @app.route("/api/delete", methods=["POST"])

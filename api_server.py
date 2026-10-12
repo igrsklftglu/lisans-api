@@ -426,7 +426,7 @@ def verify():
     expiry = sig_result["expiry"]
 
     key_hash = hashlib.sha256(key.encode()).hexdigest()
-    rows = db_execute("SELECT * FROM licenses WHERE key_hash = ?", (key_hash,))
+    rows = db_execute("SELECT * FROM licenses WHERE key_hash = ? OR legacy_key_hash = ?", (key_hash, key_hash))
     if not rows:
         return jsonify({
             "valid": False,

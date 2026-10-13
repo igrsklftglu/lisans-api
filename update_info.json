@@ -1,6 +1,6 @@
 {
-  "last_version": "1.2.4",
-  "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.4/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-  "sha256": "2478670B7824F85A5D756647F712B65B098CAD6E332B06959D2BAC8A3CF5D56C",
-  "release_notes": "Kararlilik ve sinyal dogrulugu iyileştirmeleri. Guncelleme sonrasi otomatik yeniden baslatma duzeltildi."
+    "last_version": "1.2.5",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.5/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "ca039dad24d45db82f9294b7205561685f9c3d312fbe1a0e433cfb2a941001f6",
+    "release_notes": "XAUEUR sembol tespiti duzeltildi (broker-agnostik): altin/EUR sembolu artik broker'daki gercek isimle (XAUEUR#, XAUEUR, GOLDEUR vb.) bulunur ve Market Watch'a eklenir."
 }

@@ -1,6 +1,6 @@
 {
-    "last_version": "1.2.5",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.5/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "ca039dad24d45db82f9294b7205561685f9c3d312fbe1a0e433cfb2a941001f6",
-    "release_notes": "XAUEUR sembol tespiti duzeltildi (broker-agnostik): altin/EUR sembolu artik broker'daki gercek isimle (XAUEUR#, XAUEUR, GOLDEUR vb.) bulunur ve Market Watch'a eklenir."
+    "last_version": "1.2.6",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.6/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "30d7538b6444de558ee4619872b01fb5412b907bce50b22f5e2d929dc4e73392",
+    "release_notes": "Elliott Wave, RSI Divergence ve MACD Divergence tespitleri duzeltildi: scipy bagimliligi kaldirildi, saf-numpy esdegeri eklendi. Bu tespitler EXE icinde sessizce devre disi kalmisti (scipy.signal paketlenmemisti), artik sinyal skorlari tam hesaplanir. EXE boyutu degismedi."
 }

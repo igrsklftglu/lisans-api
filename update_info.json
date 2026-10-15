@@ -1,6 +1,6 @@
 {
-    "last_version": "1.2.6",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.6/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "30d7538b6444de558ee4619872b01fb5412b907bce50b22f5e2d929dc4e73392",
-    "release_notes": "Elliott Wave, RSI Divergence ve MACD Divergence tespitleri duzeltildi: scipy bagimliligi kaldirildi, saf-numpy esdegeri eklendi. Bu tespitler EXE icinde sessizce devre disi kalmisti (scipy.signal paketlenmemisti), artik sinyal skorlari tam hesaplanir. EXE boyutu degismedi."
+    "last_version": "1.2.7",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.7/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "7babee084242d291319de4a5b6e50020fc6b88542aaf6da194a51169d8e5de5a",
+    "release_notes": "Haber filtresi yeniden calisir hale getirildi (TradingView takvimi + yedek kaynak); GUI'ye 'Haber filtresi' ac/kapa kutusu ve dashboard gostergesi eklendi. Islem Gecmisi sekmesi artik kapanan islemleri gosterir (kota 200). 'Kardaki Tum Pozisyonlari Kapat' butonu eklendi. Market kapali (10018) durumunda pozisyon takipten cikarilmiyor ve gereksiz MT5 reconnect yapilmiyor. ADX/MIN-CONF log mesajlari gercek sebebi yaziyor. Log/GUI gercek broker sembol adini gosteriyor. Ayar migrasyonu eklendi (eksik/bozuk ayarlar sessizce kapanmiyor)."
 }

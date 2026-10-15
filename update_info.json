@@ -1,6 +1,6 @@
 {
-    "last_version": "1.2.7",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.7/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "7babee084242d291319de4a5b6e50020fc6b88542aaf6da194a51169d8e5de5a",
-    "release_notes": "Haber filtresi yeniden calisir hale getirildi (TradingView takvimi + yedek kaynak); GUI'ye 'Haber filtresi' ac/kapa kutusu ve dashboard gostergesi eklendi. Islem Gecmisi sekmesi artik kapanan islemleri gosterir (kota 200). 'Kardaki Tum Pozisyonlari Kapat' butonu eklendi. Market kapali (10018) durumunda pozisyon takipten cikarilmiyor ve gereksiz MT5 reconnect yapilmiyor. ADX/MIN-CONF log mesajlari gercek sebebi yaziyor. Log/GUI gercek broker sembol adini gosteriyor. Ayar migrasyonu eklendi (eksik/bozuk ayarlar sessizce kapanmiyor)."
+    "last_version": "1.2.8",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.8/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "1dabb8cd52184c5fca0858aba8b9725ee4a250016222c1ef9b841d017ca29479",
+    "release_notes": "Duzeltme: Tam TP/SL'ye ulasan pozisyonlarda 'time' kaynakli hata (UnboundLocalError) giderildi. Bu hata bazi durumlarda pozisyonun bot tarafindan kapatilmasini engelliyordu. Ayrica v1.2.7 ile gelen tum iyilestirmeler gecerli: haber filtresi (TradingView), GUI haber filtresi kutusu, Islem Gecmisi (kapanan islemler, kota 200), 'Kardaki Tum Pozisyonlari Kapat' butonu, market-closed duzeltmesi, ADX/MIN-CONF log duzeltmeleri, gercek sembol adi, ayar migrasyonu."
 }

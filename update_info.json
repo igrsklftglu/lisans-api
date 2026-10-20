@@ -1,6 +1,6 @@
 {
-    "last_version": "1.2.8",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.8/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "1dabb8cd52184c5fca0858aba8b9725ee4a250016222c1ef9b841d017ca29479",
-    "release_notes": "Duzeltme: Tam TP/SL'ye ulasan pozisyonlarda 'time' kaynakli hata (UnboundLocalError) giderildi. Bu hata bazi durumlarda pozisyonun bot tarafindan kapatilmasini engelliyordu. Ayrica v1.2.7 ile gelen tum iyilestirmeler gecerli: haber filtresi (TradingView), GUI haber filtresi kutusu, Islem Gecmisi (kapanan islemler, kota 200), 'Kardaki Tum Pozisyonlari Kapat' butonu, market-closed duzeltmesi, ADX/MIN-CONF log duzeltmeleri, gercek sembol adi, ayar migrasyonu."
+    "last_version": "1.2.9",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.9/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "5ec062385c676fecc37c4c82e9231c2f38b50199c2fa758d26bd0cfccb6c3c31",
+    "release_notes": "Yenilikler ve duzeltmeler: (1) REVERSAL islemler artik sadece cok-zamanli trend o yone DONMUSSE acilir; dusen bicak tutma (trende karsi erken giris) ve trende takilip kalma sorunu giderildi. (2) Karisik piyasada (iki yonde de onay oldugunda) artik KAZANAN tarafin onaylari sayilir - onay sayisi/esik dogru hesaplanir. (3) Haber filtresi: sadece USD ve EUR yuksek etkili haberleri dikkate alinir; CNY/JPY/GBP gibi diger birimlerin yuksek etkili haberleri artik islemi engellemez. (4) Haber filtresi AGGRESSIVE modda da aktif. (5) Guvenlik: kaynak kod artik derlenmis (.pyc) olarak paketlenir."
 }

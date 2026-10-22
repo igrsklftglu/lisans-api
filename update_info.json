@@ -1,6 +1,6 @@
 {
-    "last_version": "1.2.9",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.2.9/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "5ec062385c676fecc37c4c82e9231c2f38b50199c2fa758d26bd0cfccb6c3c31",
-    "release_notes": "Yenilikler ve duzeltmeler: (1) REVERSAL islemler artik sadece cok-zamanli trend o yone DONMUSSE acilir; dusen bicak tutma (trende karsi erken giris) ve trende takilip kalma sorunu giderildi. (2) Karisik piyasada (iki yonde de onay oldugunda) artik KAZANAN tarafin onaylari sayilir - onay sayisi/esik dogru hesaplanir. (3) Haber filtresi: sadece USD ve EUR yuksek etkili haberleri dikkate alinir; CNY/JPY/GBP gibi diger birimlerin yuksek etkili haberleri artik islemi engellemez. (4) Haber filtresi AGGRESSIVE modda da aktif. (5) Guvenlik: kaynak kod artik derlenmis (.pyc) olarak paketlenir."
+    "last_version": "1.3.0",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.3.0/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "c055bea11530218b3c9b5e93f24a4de5d49acf97206963af55b7b9b2090b9baf",
+    "release_notes": "Yeni ozellik: IZLEYICI TAKIP STOP (ATR-bazli trailing stop). KARDA olan pozisyonun SL'si fiyati takip eder ve kari kilitler; SL sadece lehe kayar, giris fiyatinin altina inmez (zarari buyutmez). ATR (piyasa oynakligi) ile otomatik ayarlanir: sakin piyasada dar, volatil piyasada genis. GUI'deki 'Izleyici takip stop noktasi (trailing stop)' kutusu ile acilip kapatilabilir."
 }

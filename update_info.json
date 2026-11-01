@@ -1,6 +1,6 @@
 {
-    "last_version": "1.3.1",
-    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.3.1/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
-    "sha256": "555f14a5810c75ae6335d3ca16b808c8af6ea54fbc216ac5af58a61e118b03f2",
-    "release_notes": "Reversal (dip/tepe yakalama) duzeltmesi: iki zayit sart celisip reversal islemlerinin neredeyse hic acilmamasina yol aciyordu; celiski giderildi ve reversal tekrar calisir hale geldi (donus korumasi aynen korundu). Ayrica Son Aktiviteler akisi duzeltildi: filtre engeli artik dogru gorunuyor, gereksiz mesajlar kaldirildi. M45 sentez log gurultusu susturuldu, bazi GUI metin hatalari (sembol / zaman dilimi) giderildi."
+    "last_version": "1.3.2",
+    "download_url": "https://github.com/igrsklftglu/lisans-api/releases/download/v1.3.2/XAUUSD_XAUEUR_Professional_Bot_Setup.exe",
+    "sha256": "83dc8727183078fedaeda62e364ad045e43c7d931ae10c94c5e81ff6dcfc22d4",
+    "release_notes": "Kar koruma iyilestirmeleri: (1) TP bazli trailing stop eklendi - kar TP'nin %50'sine ulasinca SL giris seviyesine cekilir, sonra TP mesafesinin %50'si geriden takip eder ve asla geri gitmez. (2) Haber filtresine fiyat tepkisi kontrolu eklendi - son 5 dakikada 1.5xATR ters hareket varsa yeni islem acilmaz (TERS MOMENTUM). (3) Zarardaki pozisyonlar icin momentum stop eklendi (haber filtresi acikken calisir) - 5 dakikada 1.5xATR ters hareket olursa SL fiyatin 0.5xATR gerisine cekilir, gevsetilmez. (4) 0.01 lot pozisyonlarda %80 kar kapatma esigi TP 300 pip'ten 200 pip'e dusuruldu. Ayrica kapali checkbox sinyalleri sadece bilgilendirme olarak gonderiliyor."
 }
